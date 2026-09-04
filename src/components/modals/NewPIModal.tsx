@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { X, Plus, Trash2, FilePlus, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Plus, Trash2, FilePlus, Check, Save } from 'lucide-react';
 import { dispatchService } from '../../services/api';
-import { Client, PIItem, PriorityLevel } from '../../types';
+import { Client, PIItem, PriorityLevel, ProformaInvoice } from '../../types';
 
 interface NewPIModalProps {
   isOpen: boolean;
@@ -11,14 +11,16 @@ interface NewPIModalProps {
 
 export const NewPIModal: React.FC<NewPIModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const clients = dispatchService.getClients();
+  const pendingPIs = dispatchService.getPendingPIs();
 
   const [selectedClientCode, setSelectedClientCode] = useState(clients[0]?.code || 'REL-MUM');
-  const [orderNumber, setOrderNumber] = useState(`ORD-${Math.floor(89450 + Math.random() * 500)}`);
+  const [selectedPIId, setSelectedPIId] = useState<string>('');
   const [expectedDate, setExpectedDate] = useState(
     new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0]
   );
   const [priority, setPriority] = useState<PriorityLevel>('NORMAL');
-  const [remarks, setRemarks] = useState('');
+  const [creditLimit, setCreditLimit] = useState<number>(0);
+  const [totalAmountReceived, setTotalAmountReceived] = useState<number>(0);
 
   const [items, setItems] = useState<PIItem[]>([
     {
@@ -34,9 +36,25 @@ export const NewPIModal: React.FC<NewPIModalProps> = ({ isOpen, onClose, onSucce
     },
   ]);
 
+  // When a PI is selected, auto-fill all its data
+  useEffect(() => {
+    if (selectedPIId) {
+      const pi = pendingPIs.find(p => p.id === selectedPIId);
+      if (pi) {
+        setSelectedClientCode(pi.clientCode);
+        setExpectedDate(pi.expectedDeliveryDate);
+        setPriority(pi.priority);
+        setItems(pi.items.length > 0 ? pi.items : items);
+        setCreditLimit(500000);  // Mock backend limit
+        setTotalAmountReceived(200000);  // Mock backend received
+      }
+    }
+  }, [selectedPIId]);
+
   if (!isOpen) return null;
 
   const selectedClient = clients.find((c) => c.code === selectedClientCode) || clients[0];
+  const selectedPI = pendingPIs.find(p => p.id === selectedPIId);
 
   const handleAddItem = () => {
     setItems([
@@ -82,13 +100,22 @@ export const NewPIModal: React.FC<NewPIModalProps> = ({ isOpen, onClose, onSucce
   );
   const totalAmount = items.reduce((sum, itm) => sum + (Number(itm.amount) || 0), 0);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const availableBalance = totalAmountReceived + creditLimit;
+  const isCreditSufficient = availableBalance >= totalAmount;
+
+  const handleSubmit = (e: React.FormEvent, isDraft: boolean = false) => {
     e.preventDefault();
+
+    if (!isDraft && !isCreditSufficient) {
+      alert(`Credit Validation Failed! Available Balance (₹${availableBalance.toLocaleString()}) is less than Total PI Amount (₹${totalAmount.toLocaleString()}).`);
+      return;
+    }
+
     const todayStr = new Date().toISOString().split('T')[0];
 
     dispatchService.createPI({
-      piNumber: `PI-2026-${Math.floor(1050 + Math.random() * 900)}`,
-      orderNumber,
+      piNumber: selectedPI?.piNumber || `PI-2026-${Math.floor(1050 + Math.random() * 900)}`,
+      orderNumber: selectedPI?.orderNumber || `ORD-${Math.floor(89450 + Math.random() * 500)}`,
       clientName: selectedClient.name,
       clientCode: selectedClient.code,
       destinationCity: selectedClient.city,
@@ -101,9 +128,9 @@ export const NewPIModal: React.FC<NewPIModalProps> = ({ isOpen, onClose, onSucce
       totalWeightKg: totalWeight,
       totalVolumeCbm: totalVolume,
       totalAmount,
-      status: 'PENDING',
+      status: isDraft ? 'DRAFT' : 'PENDING',
       priority,
-      remarks,
+      remarks: `Credit Limit: ₹${creditLimit.toLocaleString()} | Amount Received: ₹${totalAmountReceived.toLocaleString()}`,
     });
 
     onClose();
@@ -112,7 +139,7 @@ export const NewPIModal: React.FC<NewPIModalProps> = ({ isOpen, onClose, onSucce
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-3xl w-full max-h-[92vh] flex flex-col overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
           <div className="flex items-center gap-3">
@@ -120,9 +147,9 @@ export const NewPIModal: React.FC<NewPIModalProps> = ({ isOpen, onClose, onSucce
               <FilePlus className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-lg font-bold tracking-tight text-white">Create Proforma Invoice</h3>
+              <h3 className="text-lg font-bold tracking-tight text-white">Dispatch Planning Form</h3>
               <p className="text-xs text-slate-400">
-                Log a new sales order into DISPATCH PLANNING ERP pipeline
+                Create dispatch bill from pending PI
               </p>
             </div>
           </div>
@@ -135,8 +162,33 @@ export const NewPIModal: React.FC<NewPIModalProps> = ({ isOpen, onClose, onSucce
         </div>
 
         {/* Form Content */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5 text-sm">
+        <form onSubmit={(e) => handleSubmit(e, false)} className="flex-1 overflow-y-auto p-6 space-y-5 text-sm">
+          {/* Row 1: PI Number + Client + Delivery Date */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                PI Number <span className="text-rose-500">*</span>
+              </label>
+              <select
+                value={selectedPIId}
+                onChange={(e) => setSelectedPIId(e.target.value)}
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:ring-2 focus:ring-[#F4B400]"
+                required
+              >
+                <option value="">-- Select Pending PI --</option>
+                {pendingPIs.map((pi) => (
+                  <option key={pi.id} value={pi.id}>
+                    {pi.piNumber} — {pi.clientName} (₹{pi.totalAmount.toLocaleString()})
+                  </option>
+                ))}
+              </select>
+              {selectedPIId && selectedPI && (
+                <p className="mt-1 text-[10px] text-emerald-600 font-medium">
+                  ✓ Mapped: {selectedPI.clientName} | {selectedPI.destinationCity} | Weight: {selectedPI.totalWeightKg.toLocaleString()} kg
+                </p>
+              )}
+            </div>
+
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Select Client
@@ -145,6 +197,7 @@ export const NewPIModal: React.FC<NewPIModalProps> = ({ isOpen, onClose, onSucce
                 value={selectedClientCode}
                 onChange={(e) => setSelectedClientCode(e.target.value)}
                 className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:ring-2 focus:ring-[#F4B400]"
+                disabled={!!selectedPIId}
               >
                 {clients.map((c) => (
                   <option key={c.id} value={c.code}>
@@ -152,19 +205,6 @@ export const NewPIModal: React.FC<NewPIModalProps> = ({ isOpen, onClose, onSucce
                   </option>
                 ))}
               </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Order / PO Number
-              </label>
-              <input
-                type="text"
-                value={orderNumber}
-                onChange={(e) => setOrderNumber(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:ring-2 focus:ring-[#F4B400]"
-                required
-              />
             </div>
 
             <div>
@@ -181,7 +221,8 @@ export const NewPIModal: React.FC<NewPIModalProps> = ({ isOpen, onClose, onSucce
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Row 2: Priority + Credit Limit + Total Amount Received */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">Priority</label>
               <select
@@ -197,19 +238,32 @@ export const NewPIModal: React.FC<NewPIModalProps> = ({ isOpen, onClose, onSucce
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Special Handling / Remarks
+                Credit Limit (₹) <span className="text-[10px] text-blue-500 font-normal">(Backend Mapped)</span>
               </label>
               <input
-                type="text"
-                value={remarks}
-                onChange={(e) => setRemarks(e.target.value)}
-                placeholder="e.g. Forklift unloading required on site"
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:ring-2 focus:ring-[#F4B400]"
+                type="number"
+                value={creditLimit}
+                onChange={(e) => setCreditLimit(Number(e.target.value))}
+                placeholder="e.g. 500000"
+                className="w-full px-3 py-2 bg-amber-50 border border-amber-300 rounded-lg text-xs font-bold text-slate-900 focus:ring-2 focus:ring-[#F4B400]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Total Amount Received (₹) <span className="text-[10px] text-blue-500 font-normal">(Backend Mapped)</span>
+              </label>
+              <input
+                type="number"
+                value={totalAmountReceived}
+                onChange={(e) => setTotalAmountReceived(Number(e.target.value))}
+                placeholder="e.g. 200000"
+                className="w-full px-3 py-2 bg-emerald-50 border border-emerald-300 rounded-lg text-xs font-bold text-slate-900 focus:ring-2 focus:ring-[#F4B400]"
               />
             </div>
           </div>
 
-          {/* Line Items Table */}
+          {/* Line Items Table with UOM */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
@@ -231,6 +285,7 @@ export const NewPIModal: React.FC<NewPIModalProps> = ({ isOpen, onClose, onSucce
                   <tr>
                     <th className="px-3 py-2">Item Code</th>
                     <th className="px-3 py-2">Description</th>
+                    <th className="px-3 py-2 w-24">UOM</th>
                     <th className="px-3 py-2 w-20">Qty</th>
                     <th className="px-3 py-2 w-20">Weight (kg)</th>
                     <th className="px-3 py-2 w-20">Rate (₹)</th>
@@ -260,6 +315,20 @@ export const NewPIModal: React.FC<NewPIModalProps> = ({ isOpen, onClose, onSucce
                           className="w-full px-2 py-1 bg-white border border-slate-200 rounded text-xs"
                           required
                         />
+                      </td>
+                      <td className="p-2">
+                        <select
+                          value={itm.unit || 'PCS'}
+                          onChange={(e) => handleItemChange(itm.id, 'unit', e.target.value)}
+                          className="w-full px-2 py-1 bg-white border border-slate-200 rounded text-xs"
+                        >
+                          <option value="PCS">PCS</option>
+                          <option value="BOX">BOX</option>
+                          <option value="KG">KG</option>
+                          <option value="MT">MT</option>
+                          <option value="PALLET">PALLET</option>
+                          <option value="SET">SET</option>
+                        </select>
                       </td>
                       <td className="p-2">
                         <input
@@ -334,13 +403,23 @@ export const NewPIModal: React.FC<NewPIModalProps> = ({ isOpen, onClose, onSucce
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              className="px-6 py-2 text-xs font-bold text-slate-900 bg-[#F4B400] hover:bg-[#e0a400] rounded-lg shadow-xs flex items-center gap-1.5 transition-all"
-            >
-              <Check className="w-4 h-4" />
-              <span>Save & Submit Proforma Invoice</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={(e) => handleSubmit(e, true)}
+                className="px-4 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg border border-slate-300 flex items-center gap-1.5 transition-all"
+              >
+                <Save className="w-4 h-4 text-slate-600" />
+                <span>Save Draft</span>
+              </button>
+              <button
+                type="submit"
+                className="px-6 py-2 text-xs font-bold rounded-lg shadow-xs flex items-center gap-1.5 transition-all text-slate-900 bg-[#F4B400] hover:bg-[#e0a400] cursor-pointer"
+              >
+                <Check className="w-4 h-4" />
+                <span>Save & Submit Dispatch Bill</span>
+              </button>
+            </div>
           </div>
         </form>
       </div>

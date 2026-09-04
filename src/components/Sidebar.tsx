@@ -37,20 +37,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate }) => 
       badge: undefined,
     },
     {
-      id: 'dispatch-planning',
-      label: 'Dispatch Planning',
-      path: '/dispatch-planning',
-      icon: Layers,
-      badge: 'Action',
-      badgeColor: 'bg-amber-100 text-amber-900 border-amber-300',
-    },
-    {
       id: 'pending-pi',
       label: 'Pending PI',
       path: '/pending-pi',
       icon: FileSpreadsheet,
       badge: pendingCount > 0 ? String(pendingCount) : undefined,
       badgeColor: 'bg-amber-400 text-slate-950 font-bold',
+    },
+    {
+      id: 'dispatch-planning',
+      label: 'Dispatch Planning',
+      path: '/dispatch-planning',
+      icon: Layers,
+      badge: 'Action',
+      badgeColor: 'bg-amber-100 text-amber-900 border-amber-300',
     },
     {
       id: 'todays-planning',

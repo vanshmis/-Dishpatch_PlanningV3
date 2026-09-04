@@ -6,21 +6,20 @@ import {
   CheckCircle2,
   AlertTriangle,
   ArrowRight,
-  TrendingUp,
-  FileText,
-  Shield,
-  Layers,
-  MapPin,
-  RefreshCw,
   Plus,
   Play,
   RotateCcw,
+  IndianRupee,
+  ShieldCheck,
+  Layers,
+  MapPin,
+  FileText,
 } from 'lucide-react';
 import { dispatchService } from '../services/api';
 import { DispatchPlan, ProformaInvoice, Vehicle } from '../types';
-import { StatCard } from '../components/common/StatCard';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { CapacityBar } from '../components/common/CapacityBar';
+import { ApprovePIModal } from '../components/modals/ApprovePIModal';
 
 interface DashboardPageProps {
   onNavigate: (path: string) => void;
@@ -43,6 +42,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [dispatches, setDispatches] = useState<DispatchPlan[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
 
+  const [selectedPIToApprove, setSelectedPIToApprove] = useState<ProformaInvoice | null>(null);
+
   useEffect(() => {
     const loadData = () => {
       setPis(dispatchService.getPIs());
@@ -60,9 +61,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     (d) => d.dispatchDate === '2026-03-02' || d.status === 'LOADING' || d.status === 'READY_FOR_LOADING'
   );
   const inTransitDispatches = dispatches.filter((d) => d.status === 'IN_TRANSIT');
-  const completedDispatches = dispatches.filter((d) => d.status === 'DELIVERED');
 
-  const totalPendingWeight = pendingPIs.reduce((sum, p) => sum + p.totalWeightKg, 0);
+  const totalPendingAmount = pendingPIs.reduce((sum, p) => sum + p.totalAmount, 0);
   const availableVehicles = vehicles.filter((v) => v.status === 'AVAILABLE');
 
   const handleAdvanceStatus = (dsp: DispatchPlan) => {
@@ -103,7 +103,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             className="px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg shadow-xs flex items-center gap-1.5 transition-colors"
           >
             <Plus className="w-3.5 h-3.5 text-slate-500" />
-            <span>Create PI</span>
+            <span>Dispatch Planning Form</span>
           </button>
           <button
             onClick={() => onOpenNewDispatch()}
@@ -115,93 +115,86 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
       </div>
 
-      {/* KPI Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title="Pending PIs Backlog"
-          value={`${pendingPIs.length} Orders`}
-          subtitle={`${(totalPendingWeight / 1000).toFixed(1)} Tons to assign`}
-          icon={FileSpreadsheet}
-          accentColor="bg-[#181309] text-[#F4B400]"
-          badge={urgentPIs.length > 0 ? `${urgentPIs.length} Urgent` : undefined}
+      {/* KPI Stats Grid (Compact Size) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* KPI 1: Total Pending PI */}
+        <div
           onClick={() => onNavigate('/pending-pi')}
-        />
+          className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-xs cursor-pointer hover:border-slate-300 transition-all flex items-center justify-between"
+        >
+          <div>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block">
+              Total Pending PI
+            </span>
+            <div className="text-xl font-extrabold text-slate-900 mt-0.5">{pendingPIs.length} Orders</div>
+            <span className="text-[10px] text-amber-700 font-semibold">
+              {urgentPIs.length} High/Urgent Priority
+            </span>
+          </div>
+          <div className="w-9 h-9 rounded-lg bg-[#181309] text-[#F4B400] flex items-center justify-center font-bold shrink-0">
+            <FileSpreadsheet className="w-4 h-4" />
+          </div>
+        </div>
 
-        <StatCard
-          title="Today's Dispatch Queue"
-          value={`${todaysDispatches.length} Vehicles`}
-          subtitle="Loading bays active"
-          icon={Clock}
-          accentColor="bg-blue-600 text-white"
+        {/* KPI 2: Total Invoice Amount */}
+        <div
+          onClick={() => onNavigate('/pending-pi')}
+          className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-xs cursor-pointer hover:border-slate-300 transition-all flex items-center justify-between"
+        >
+          <div>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block">
+              Total Invoice Amount
+            </span>
+            <div className="text-xl font-extrabold text-emerald-700 mt-0.5">
+              ₹{totalPendingAmount.toLocaleString()}
+            </div>
+            <span className="text-[10px] text-slate-500 font-medium">
+              ₹{(totalPendingAmount / 100000).toFixed(2)} Lakhs Pending
+            </span>
+          </div>
+          <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold shrink-0 border border-emerald-200">
+            ₹
+          </div>
+        </div>
+
+        {/* KPI 3: Today's Dispatch Queue */}
+        <div
           onClick={() => onNavigate('/todays-planning')}
-        />
+          className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-xs cursor-pointer hover:border-slate-300 transition-all flex items-center justify-between"
+        >
+          <div>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block">
+              Today's Dispatch Queue
+            </span>
+            <div className="text-xl font-extrabold text-slate-900 mt-0.5">{todaysDispatches.length} Vehicles</div>
+            <span className="text-[10px] text-slate-500 font-medium">Loading bays active</span>
+          </div>
+          <div className="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold shrink-0">
+            <Clock className="w-4 h-4" />
+          </div>
+        </div>
 
-        <StatCard
-          title="Consignments In Transit"
-          value={`${inTransitDispatches.length} En Route`}
-          subtitle="GPS tracked interstate"
-          icon={Truck}
-          accentColor="bg-sky-600 text-white"
-          onClick={() => onNavigate('/todays-planning')}
-        />
-
-        <StatCard
-          title="Fleet Available"
-          value={`${availableVehicles.length} / ${vehicles.length}`}
-          subtitle="Ready at yard"
-          icon={CheckCircle2}
-          accentColor="bg-emerald-600 text-white"
+        {/* KPI 4: Fleet Available */}
+        <div
           onClick={() => onNavigate('/settings')}
-        />
-      </div>
-
-      {/* Pipeline Status Breakdown */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
-        <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 flex items-center justify-between">
-          <span>Dispatch Lifecycle Pipeline</span>
-          <span className="text-[11px] font-normal text-slate-400">Live Stage Tracker</span>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 text-center text-xs">
-          <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-            <span className="text-slate-500 block text-[11px]">1. Draft</span>
-            <span className="text-lg font-bold text-slate-800">
-              {dispatches.filter((d) => d.status === 'DRAFT').length}
+          className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-xs cursor-pointer hover:border-slate-300 transition-all flex items-center justify-between"
+        >
+          <div>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block">
+              Fleet Available
             </span>
+            <div className="text-xl font-extrabold text-slate-900 mt-0.5">
+              {availableVehicles.length} / {vehicles.length}
+            </div>
+            <span className="text-[10px] text-slate-500 font-medium">Ready at yard</span>
           </div>
-          <div className="p-3 bg-indigo-50/60 rounded-lg border border-indigo-100">
-            <span className="text-indigo-700 block text-[11px]">2. Ready to Load</span>
-            <span className="text-lg font-bold text-indigo-900">
-              {dispatches.filter((d) => d.status === 'READY_FOR_LOADING').length}
-            </span>
-          </div>
-          <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
-            <span className="text-purple-700 block text-[11px]">3. Loading Dock</span>
-            <span className="text-lg font-bold text-purple-900">
-              {dispatches.filter((d) => d.status === 'LOADING').length}
-            </span>
-          </div>
-          <div className="p-3 bg-cyan-50 rounded-lg border border-cyan-200">
-            <span className="text-cyan-700 block text-[11px]">4. Gate Pass Issued</span>
-            <span className="text-lg font-bold text-cyan-900">
-              {dispatches.filter((d) => d.status === 'GATE_PASS_ISSUED').length}
-            </span>
-          </div>
-          <div className="p-3 bg-sky-50 rounded-lg border border-sky-200">
-            <span className="text-sky-700 block text-[11px]">5. In Transit</span>
-            <span className="text-lg font-bold text-sky-900">
-              {dispatches.filter((d) => d.status === 'IN_TRANSIT').length}
-            </span>
-          </div>
-          <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
-            <span className="text-emerald-700 block text-[11px]">6. Delivered (POD)</span>
-            <span className="text-lg font-bold text-emerald-900">
-              {dispatches.filter((d) => d.status === 'DELIVERED').length}
-            </span>
+          <div className="w-9 h-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold shrink-0">
+            <CheckCircle2 className="w-4 h-4" />
           </div>
         </div>
       </div>
 
-      {/* Main Operational Tables Grid */}
+      {/* Operational Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left 2 Cols: Active Today's Dispatches */}
         <div className="lg:col-span-2 space-y-4">
@@ -278,7 +271,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       </div>
                     </div>
 
-                    {/* Route & Vehicle Info */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-slate-50 p-2.5 rounded-lg border border-slate-100">
                       <div>
                         <div className="font-semibold text-slate-800 flex items-center gap-1.5">
@@ -303,7 +295,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       </div>
                     </div>
 
-                    {/* Payload Capacity Gauge */}
                     <CapacityBar
                       current={dsp.totalWeightKg}
                       max={dsp.maxWeightCapacityKg}
@@ -317,14 +308,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         </div>
 
-        {/* Right 1 Col: Urgent Pending PI Orders & Quick Links */}
+        {/* Right 1 Col: Pending PIs to Approve */}
         <div className="space-y-4">
-          {/* Urgent Orders Box */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-500" />
-                <h3 className="font-bold text-sm text-slate-900">Urgent Pending Orders</h3>
+                <FileSpreadsheet className="w-4 h-4 text-amber-500" />
+                <h3 className="font-bold text-sm text-slate-900">Pending PI Approvals</h3>
               </div>
               <button
                 onClick={() => onNavigate('/pending-pi')}
@@ -335,69 +325,52 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </div>
 
             <div className="divide-y divide-slate-100 max-h-96 overflow-y-auto">
-              {urgentPIs.length === 0 ? (
+              {pendingPIs.length === 0 ? (
                 <div className="p-6 text-center text-xs text-slate-400">
-                  No urgent orders pending allocation.
+                  No pending orders waiting for approval.
                 </div>
               ) : (
-                urgentPIs.map((pi) => (
+                pendingPIs.map((pi) => (
                   <div
                     key={pi.id}
-                    onClick={() => onOpenPIDetails(pi)}
-                    className="p-3.5 hover:bg-slate-50 transition-colors cursor-pointer space-y-1.5"
+                    className="p-3.5 hover:bg-slate-50 transition-colors flex items-center justify-between gap-2"
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono font-bold text-xs text-slate-900">{pi.piNumber}</span>
-                      <StatusBadge status={pi.priority} size="sm" />
+                    <div className="space-y-0.5 cursor-pointer" onClick={() => onOpenPIDetails(pi)}>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-xs text-slate-900">{pi.piNumber}</span>
+                        <StatusBadge status={pi.priority} size="sm" />
+                      </div>
+                      <div className="text-xs font-semibold text-slate-800">{pi.clientName}</div>
+                      <div className="text-[11px] font-bold text-emerald-700">
+                        ₹{pi.totalAmount.toLocaleString()}
+                      </div>
                     </div>
-                    <div className="text-xs font-semibold text-slate-800">{pi.clientName}</div>
-                    <div className="flex items-center justify-between text-[11px] text-slate-500">
-                      <span>{pi.destinationCity}</span>
-                      <span className="font-bold text-slate-800">
-                        {pi.totalWeightKg.toLocaleString()} kg
-                      </span>
-                    </div>
+
+                    <button
+                      onClick={() => setSelectedPIToApprove(pi)}
+                      className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded text-xs flex items-center gap-1 shadow-2xs shrink-0"
+                      title="Approve PI"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      <span>Approve</span>
+                    </button>
                   </div>
                 ))
               )}
             </div>
-
-            <div className="p-3 bg-slate-50 border-t border-slate-100 text-center">
-              <button
-                onClick={() => onNavigate('/dispatch-planning')}
-                className="w-full py-2 bg-[#181309] hover:bg-[#282114] text-white text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5"
-              >
-                <Layers className="w-3.5 h-3.5 text-[#F4B400]" />
-                <span>Open Dispatch Planning Console</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Hub Status Summary */}
-          <div className="bg-[#181309] text-white rounded-xl p-5 space-y-3">
-            <div className="flex items-center justify-between text-xs border-b border-[#382f1b] pb-2">
-              <span className="text-[#cca352] font-semibold uppercase tracking-wider">
-                Hub Compliance & Safety
-              </span>
-              <Shield className="w-4 h-4 text-emerald-400" />
-            </div>
-            <div className="space-y-2 text-xs">
-              <div className="flex justify-between text-slate-300">
-                <span>E-Way Bill Compliance:</span>
-                <span className="text-emerald-400 font-semibold">100% Validated</span>
-              </div>
-              <div className="flex justify-between text-slate-300">
-                <span>Weighbridge Calibration:</span>
-                <span className="text-emerald-400 font-semibold">Active & Certified</span>
-              </div>
-              <div className="flex justify-between text-slate-300">
-                <span>Loading Bays In-Use:</span>
-                <span className="text-amber-400 font-semibold">4 / 8 Bays</span>
-              </div>
-            </div>
           </div>
         </div>
       </div>
+
+      {/* Approval Modal */}
+      {selectedPIToApprove && (
+        <ApprovePIModal
+          isOpen={!!selectedPIToApprove}
+          pi={selectedPIToApprove}
+          onClose={() => setSelectedPIToApprove(null)}
+          onSuccess={() => setSelectedPIToApprove(null)}
+        />
+      )}
     </div>
   );
 };

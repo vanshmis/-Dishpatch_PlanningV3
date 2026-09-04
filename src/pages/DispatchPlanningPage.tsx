@@ -194,7 +194,7 @@ export const DispatchPlanningPage: React.FC<DispatchPlanningPageProps> = ({
             className="px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg shadow-xs flex items-center gap-1.5 transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Create New PI</span>
+            <span>Dispatch Planning Form</span>
           </button>
           <button
             onClick={() => onNavigate('/todays-planning')}

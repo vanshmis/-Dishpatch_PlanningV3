@@ -46,6 +46,10 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, className = ''
       bgClass = 'bg-rose-50 text-rose-800 border-rose-200/80';
       dotClass = 'bg-rose-500';
       break;
+    case 'DRAFT':
+      bgClass = 'bg-slate-200 text-slate-800 border-slate-300 font-bold';
+      dotClass = 'bg-slate-600';
+      break;
     case 'URGENT':
       bgClass = 'bg-red-50 text-red-700 border-red-200 font-semibold';
       dotClass = 'bg-red-600';

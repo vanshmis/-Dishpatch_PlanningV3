@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Truck, Calendar, Clock, MapPin, CheckSquare, Square, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { X, Truck, Calendar, Clock, MapPin, CheckSquare, Square, AlertTriangle, ShieldCheck, Save } from 'lucide-react';
 import { dispatchService } from '../../services/api';
 import { Vehicle, Driver, ProformaInvoice } from '../../types';
 import { CapacityBar } from '../common/CapacityBar';
@@ -18,11 +18,9 @@ export const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
   onSuccess,
 }) => {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [drivers, setDrivers] = useState<Driver[]>([]);
   const [pendingPIs, setPendingPIs] = useState<ProformaInvoice[]>([]);
 
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>('');
-  const [selectedDriverId, setSelectedDriverId] = useState<string>('');
   const [dispatchDate, setDispatchDate] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
@@ -36,11 +34,9 @@ export const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       const vList = dispatchService.getVehicles();
-      const dList = dispatchService.getDrivers();
       const piList = dispatchService.getPendingPIs();
 
       setVehicles(vList);
-      setDrivers(dList);
       setPendingPIs(piList);
 
       const availableVehicles = vList.filter((v) => v.status === 'AVAILABLE');
@@ -48,13 +44,6 @@ export const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
         setSelectedVehicleId(availableVehicles[0].id);
       } else if (vList.length > 0) {
         setSelectedVehicleId(vList[0].id);
-      }
-
-      const availableDrivers = dList.filter((d) => d.status === 'AVAILABLE');
-      if (availableDrivers.length > 0) {
-        setSelectedDriverId(availableDrivers[0].id);
-      } else if (dList.length > 0) {
-        setSelectedDriverId(dList[0].id);
       }
 
       if (preSelectedPIId) {
@@ -69,7 +58,6 @@ export const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
   if (!isOpen) return null;
 
   const currentVehicle = vehicles.find((v) => v.id === selectedVehicleId);
-  const currentDriver = drivers.find((d) => d.id === selectedDriverId);
 
   // Calculate totals for selected PIs
   const mappedPIs = pendingPIs.filter((pi) => selectedPiIds.includes(pi.id));
@@ -88,8 +76,7 @@ export const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
     }
   };
 
-  const handleCreatePlan = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = (isDraft: boolean = false) => {
     if (!currentVehicle) {
       setErrorMsg('Please select a valid vehicle');
       return;
@@ -105,13 +92,12 @@ export const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
       planningDate: new Date().toISOString().split('T')[0],
       dispatchDate,
       scheduledTimeSlot: timeSlot,
-      status: 'READY_FOR_LOADING',
+      status: isDraft ? 'DRAFT' : 'READY_FOR_LOADING',
       vehicleId: currentVehicle.id,
       vehicleNumber: currentVehicle.vehicleNumber,
       vehicleType: currentVehicle.type,
-      driverId: currentDriver?.id,
-      driverName: currentDriver?.name || currentVehicle.driverName || 'Designated Driver',
-      driverPhone: currentDriver?.phone || currentVehicle.driverPhone || '+91 98000 00000',
+      driverName: currentVehicle.driverName || 'Designated Driver',
+      driverPhone: currentVehicle.driverPhone || '+91 98000 00000',
       transporterName: currentVehicle.transporterName || 'Dispatch Fleet Services',
       route: routeStops.length > 0 ? routeStops : ['Thane Central Hub', mappedPIs[0]?.destinationCity || 'Destination'],
       piIds: selectedPiIds,
@@ -140,7 +126,7 @@ export const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
             <div>
               <h3 className="text-lg font-bold tracking-tight text-white">Create New Dispatch Plan</h3>
               <p className="text-xs text-slate-400">
-                Map pending Proforma Invoices, assign vehicle & driver, verify weight limits
+                Map pending Proforma Invoices, assign vehicle, verify weight limits
               </p>
             </div>
           </div>
@@ -153,7 +139,7 @@ export const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
         </div>
 
         {/* Content Form */}
-        <form onSubmit={handleCreatePlan} className="flex-1 overflow-y-auto p-6 space-y-6 text-sm">
+        <form onSubmit={(e) => { e.preventDefault(); handleSave(false); }} className="flex-1 overflow-y-auto p-6 space-y-6 text-sm">
           {errorMsg && (
             <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
@@ -161,79 +147,43 @@ export const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
             </div>
           )}
 
-          {/* Section 1: Vehicle & Driver Selection */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-3 p-4 bg-slate-50 rounded-xl border border-slate-200/80">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-                1. Select Vehicle
-              </label>
-              <select
-                value={selectedVehicleId}
-                onChange={(e) => setSelectedVehicleId(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:ring-2 focus:ring-[#F4B400] focus:border-[#F4B400]"
-                required
-              >
-                {vehicles.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.vehicleNumber} ({v.type}) - Cap: {(v.capacityWeightKg / 1000).toFixed(1)}T [
-                    {v.status}]
-                  </option>
-                ))}
-              </select>
+          {/* Section 1: Vehicle Selection */}
+          <div className="space-y-3 p-4 bg-slate-50 rounded-xl border border-slate-200/80">
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+              1. Select Vehicle
+            </label>
+            <select
+              value={selectedVehicleId}
+              onChange={(e) => setSelectedVehicleId(e.target.value)}
+              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:ring-2 focus:ring-[#F4B400] focus:border-[#F4B400]"
+              required
+            >
+              {vehicles.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.vehicleNumber} ({v.type}) - Cap: {(v.capacityWeightKg / 1000).toFixed(1)}T [
+                  {v.status}]
+                </option>
+              ))}
+            </select>
 
-              {currentVehicle && (
-                <div className="text-xs bg-white p-2.5 rounded-lg border border-slate-200 space-y-1">
-                  <div className="flex justify-between text-slate-600">
-                    <span>Transporter:</span>
-                    <span className="font-semibold text-slate-800">{currentVehicle.transporterName}</span>
-                  </div>
-                  <div className="flex justify-between text-slate-600">
-                    <span>Type / Ownership:</span>
-                    <span className="font-semibold text-slate-800">
-                      {currentVehicle.type} ({currentVehicle.ownerType})
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-slate-600">
-                    <span>Fitness Expiry:</span>
-                    <span className="text-emerald-700 font-mono">{currentVehicle.fitnessExpiryDate}</span>
-                  </div>
+            {currentVehicle && (
+              <div className="text-xs bg-white p-2.5 rounded-lg border border-slate-200 grid grid-cols-3 gap-2">
+                <div className="flex justify-between text-slate-600">
+                  <span>Transporter:</span>
+                  <span className="font-semibold text-slate-800">{currentVehicle.transporterName}</span>
                 </div>
-              )}
-            </div>
-
-            <div className="space-y-3 p-4 bg-slate-50 rounded-xl border border-slate-200/80">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-                2. Assign Driver
-              </label>
-              <select
-                value={selectedDriverId}
-                onChange={(e) => setSelectedDriverId(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:ring-2 focus:ring-[#F4B400] focus:border-[#F4B400]"
-              >
-                {drivers.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name} ({d.phone}) - Exp: {d.experienceYears} yrs [{d.status}]
-                  </option>
-                ))}
-              </select>
-
-              {currentDriver && (
-                <div className="text-xs bg-white p-2.5 rounded-lg border border-slate-200 space-y-1">
-                  <div className="flex justify-between text-slate-600">
-                    <span>License No:</span>
-                    <span className="font-mono text-slate-800">{currentDriver.licenseNumber}</span>
-                  </div>
-                  <div className="flex justify-between text-slate-600">
-                    <span>License Valid Till:</span>
-                    <span className="font-mono text-slate-800">{currentDriver.licenseExpiry}</span>
-                  </div>
-                  <div className="flex justify-between text-slate-600">
-                    <span>Performance Rating:</span>
-                    <span className="font-semibold text-amber-600">★ {currentDriver.rating} / 5.0</span>
-                  </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>Type / Ownership:</span>
+                  <span className="font-semibold text-slate-800">
+                    {currentVehicle.type} ({currentVehicle.ownerType})
+                  </span>
                 </div>
-              )}
-            </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>Fitness Expiry:</span>
+                  <span className="text-emerald-700 font-mono">{currentVehicle.fitnessExpiryDate}</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Section 2: Schedule & Route */}
@@ -298,7 +248,7 @@ export const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-                3. Select Pending PIs for Consolidation ({selectedPiIds.length} Selected)
+                2. Select Pending PIs for Consolidation ({selectedPiIds.length} Selected)
               </label>
               <span className="text-xs text-slate-500">
                 {pendingPIs.length} pending orders available
@@ -423,13 +373,23 @@ export const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              className="px-6 py-2.5 text-xs font-bold text-slate-900 bg-[#F4B400] hover:bg-[#e0a400] rounded-lg shadow-xs flex items-center gap-1.5 transition-all"
-            >
-              <ShieldCheck className="w-4 h-4" />
-              <span>Confirm & Initialize Dispatch</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleSave(true)}
+                className="px-4 py-2.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg border border-slate-300 flex items-center gap-1.5 transition-all"
+              >
+                <Save className="w-4 h-4 text-slate-600" />
+                <span>Save Draft</span>
+              </button>
+              <button
+                type="submit"
+                className="px-6 py-2.5 text-xs font-bold text-slate-900 bg-[#F4B400] hover:bg-[#e0a400] rounded-lg shadow-xs flex items-center gap-1.5 transition-all"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span>Confirm & Initialize Dispatch</span>
+              </button>
+            </div>
           </div>
         </form>
       </div>

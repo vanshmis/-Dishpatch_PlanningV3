@@ -107,7 +107,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold rounded-lg border border-slate-200 flex items-center gap-1.5 transition-colors"
         >
           <Plus className="w-3.5 h-3.5 text-slate-600" />
-          <span>New PI</span>
+          <span>Dispatch Planning Form</span>
         </button>
 
         <button
