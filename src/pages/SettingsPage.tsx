@@ -12,18 +12,21 @@ import {
   Save,
   Server,
   Zap,
+  Warehouse as WarehouseIcon,
+  Trash2,
 } from 'lucide-react';
 import { dispatchService } from '../services/api';
-import { Vehicle, Driver, Client } from '../types';
+import { Vehicle, Driver, Client, Warehouse } from '../types';
 
 export const SettingsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'VEHICLES' | 'DRIVERS' | 'CLIENTS' | 'INTEGRATIONS'>(
+  const [activeTab, setActiveTab] = useState<'VEHICLES' | 'DRIVERS' | 'CLIENTS' | 'INTEGRATIONS' | 'WAREHOUSES'>(
     'VEHICLES'
   );
 
   const [vehicles, setVehicles] = useState<Vehicle[]>(dispatchService.getVehicles());
   const [drivers, setDrivers] = useState<Driver[]>(dispatchService.getDrivers());
   const [clients, setClients] = useState<Client[]>(dispatchService.getClients());
+  const [warehouses, setWarehouses] = useState<Warehouse[]>(dispatchService.getWarehouses());
 
   // New Vehicle Modal State
   const [showAddVehicle, setShowAddVehicle] = useState(false);
@@ -33,11 +36,19 @@ export const SettingsPage: React.FC = () => {
   const [vVol, setVVol] = useState(32);
   const [vTransporter, setVTransporter] = useState('Dispatch Fleet Services');
 
+  // New Warehouse Modal State
+  const [showAddWarehouse, setShowAddWarehouse] = useState(false);
+  const [whName, setWhName] = useState('');
+  const [whCode, setWhCode] = useState('');
+  const [whCity, setWhCity] = useState('');
+  const [whState, setWhState] = useState('');
+  const [whCap, setWhCap] = useState(5000);
+
   const handleAddVehicle = (e: React.FormEvent) => {
     e.preventDefault();
     if (!vNum) return;
 
-    const newV = dispatchService.addVehicle({
+    dispatchService.addVehicle({
       vehicleNumber: vNum,
       type: vType,
       capacityWeightKg: Number(vCap),
@@ -54,6 +65,34 @@ export const SettingsPage: React.FC = () => {
     setVehicles(dispatchService.getVehicles());
     setShowAddVehicle(false);
     setVNum('');
+  };
+
+  const handleAddWarehouse = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!whName || !whCode) return;
+
+    dispatchService.addWarehouse({
+      name: whName,
+      code: whCode,
+      city: whCity || 'Bhiwandi',
+      state: whState || 'Maharashtra',
+      capacityTons: Number(whCap) || 5000,
+      status: 'ACTIVE',
+    });
+
+    setWarehouses(dispatchService.getWarehouses());
+    setShowAddWarehouse(false);
+    setWhName('');
+    setWhCode('');
+    setWhCity('');
+    setWhState('');
+  };
+
+  const handleDeleteWarehouse = (id: string, name: string) => {
+    if (window.confirm(`Are you sure you want to delete warehouse "${name}"?`)) {
+      dispatchService.deleteWarehouse(id);
+      setWarehouses(dispatchService.getWarehouses());
+    }
   };
 
   const handleReset = () => {
@@ -97,6 +136,7 @@ export const SettingsPage: React.FC = () => {
           { id: 'DRIVERS', label: 'Driver Registry', icon: Users },
           { id: 'CLIENTS', label: 'Client Accounts & Zones', icon: Building },
           { id: 'INTEGRATIONS', label: 'API & FMS Integrations', icon: Server },
+          { id: 'WAREHOUSES', label: 'Warehouse Master', icon: WarehouseIcon },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -408,6 +448,155 @@ export const SettingsPage: React.FC = () => {
                 SYNCED (1 min ago)
               </span>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 5: Warehouse Master */}
+      {activeTab === 'WAREHOUSES' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-sm text-slate-900">
+              Registered Warehouses & Depots ({warehouses.length})
+            </h3>
+            <button
+              onClick={() => setShowAddWarehouse(!showAddWarehouse)}
+              className="px-3 py-1.5 bg-[#F4B400] hover:bg-[#e0a400] text-slate-950 text-xs font-bold rounded-lg flex items-center gap-1.5 shadow-2xs cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Register New Warehouse</span>
+            </button>
+          </div>
+
+          {showAddWarehouse && (
+            <form
+              onSubmit={handleAddWarehouse}
+              className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3 text-xs"
+            >
+              <div className="font-bold text-slate-800">Add Warehouse to Master Registry</div>
+              <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
+                <div>
+                  <label className="block font-medium text-slate-700 mb-1">Warehouse Name</label>
+                  <input
+                    type="text"
+                    value={whName}
+                    onChange={(e) => setWhName(e.target.value)}
+                    placeholder="e.g. Thane Central Hub"
+                    className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block font-medium text-slate-700 mb-1">Warehouse Code</label>
+                  <input
+                    type="text"
+                    value={whCode}
+                    onChange={(e) => setWhCode(e.target.value)}
+                    placeholder="e.g. WH-THN"
+                    className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block font-medium text-slate-700 mb-1">City</label>
+                  <input
+                    type="text"
+                    value={whCity}
+                    onChange={(e) => setWhCity(e.target.value)}
+                    placeholder="e.g. Thane"
+                    className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block font-medium text-slate-700 mb-1">State</label>
+                  <input
+                    type="text"
+                    value={whState}
+                    onChange={(e) => setWhState(e.target.value)}
+                    placeholder="e.g. Maharashtra"
+                    className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block font-medium text-slate-700 mb-1">Capacity (Tons)</label>
+                  <input
+                    type="number"
+                    value={whCap}
+                    onChange={(e) => setWhCap(Number(e.target.value))}
+                    className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddWarehouse(false)}
+                  className="px-3 py-1 bg-white border border-slate-300 rounded text-slate-700 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1 bg-[#F4B400] text-slate-950 font-bold rounded cursor-pointer"
+                >
+                  Save Warehouse
+                </button>
+              </div>
+            </form>
+          )}
+
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-100 text-slate-600 font-semibold uppercase tracking-wider border-b border-slate-200">
+                <tr>
+                  <th className="px-4 py-3">Warehouse Name</th>
+                  <th className="px-4 py-3">Code</th>
+                  <th className="px-4 py-3">City & State</th>
+                  <th className="px-4 py-3 text-right">Capacity (Tons)</th>
+                  <th className="px-4 py-3 text-center">Status</th>
+                  <th className="px-4 py-3 text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {warehouses.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+                      No warehouses registered. Click "Register New Warehouse" to add one.
+                    </td>
+                  </tr>
+                ) : (
+                  warehouses.map((wh) => (
+                    <tr key={wh.id} className="hover:bg-slate-50">
+                      <td className="px-4 py-3 font-bold text-slate-900">{wh.name}</td>
+                      <td className="px-4 py-3 font-mono font-bold text-slate-700">{wh.code}</td>
+                      <td className="px-4 py-3 text-slate-800">
+                        {wh.city}, {wh.state}
+                      </td>
+                      <td className="px-4 py-3 text-right font-bold text-slate-900">
+                        {wh.capacityTons.toLocaleString()} T
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold border bg-emerald-50 text-emerald-800 border-emerald-200">
+                          {wh.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          onClick={() => handleDeleteWarehouse(wh.id, wh.name)}
+                          className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                          title="Delete Warehouse"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

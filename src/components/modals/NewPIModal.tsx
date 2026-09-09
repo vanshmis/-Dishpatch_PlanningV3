@@ -19,8 +19,22 @@ export const NewPIModal: React.FC<NewPIModalProps> = ({ isOpen, onClose, onSucce
     new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0]
   );
   const [priority, setPriority] = useState<PriorityLevel>('NORMAL');
+  const [division, setDivision] = useState<'GT' | 'MT' | 'SMT' | 'SMT-Direct'>('GT');
   const [creditLimit, setCreditLimit] = useState<number>(0);
   const [totalAmountReceived, setTotalAmountReceived] = useState<number>(0);
+  const [latitude, setLatitude] = useState<string>('19.0760° N');
+  const [longitude, setLongitude] = useState<string>('72.8777° E');
+  const [distanceKm, setDistanceKm] = useState<number>(32);
+
+  // Update Lat/Long and Distance whenever client changes
+  useEffect(() => {
+    const client = clients.find((c) => c.code === selectedClientCode);
+    if (client) {
+      setLatitude(client.latitude || '19.0760° N');
+      setLongitude(client.longitude || '72.8777° E');
+      setDistanceKm(client.distanceKm || 35);
+    }
+  }, [selectedClientCode, clients]);
 
   const [items, setItems] = useState<PIItem[]>([
     {
@@ -130,6 +144,10 @@ export const NewPIModal: React.FC<NewPIModalProps> = ({ isOpen, onClose, onSucce
       totalAmount,
       status: isDraft ? 'DRAFT' : 'PENDING',
       priority,
+      division,
+      latitude,
+      longitude,
+      distanceKm,
       remarks: `Credit Limit: ₹${creditLimit.toLocaleString()} | Amount Received: ₹${totalAmountReceived.toLocaleString()}`,
     });
 
@@ -221,8 +239,8 @@ export const NewPIModal: React.FC<NewPIModalProps> = ({ isOpen, onClose, onSucce
             </div>
           </div>
 
-          {/* Row 2: Priority + Credit Limit + Total Amount Received */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Row 2: Priority + Division + Credit Limit + Total Amount Received */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">Priority</label>
               <select
@@ -233,6 +251,20 @@ export const NewPIModal: React.FC<NewPIModalProps> = ({ isOpen, onClose, onSucce
                 <option value="NORMAL">Normal Priority</option>
                 <option value="HIGH">High Priority</option>
                 <option value="URGENT">Urgent Express</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Division</label>
+              <select
+                value={division}
+                onChange={(e) => setDivision(e.target.value as any)}
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-purple-900 focus:ring-2 focus:ring-[#F4B400]"
+              >
+                <option value="GT">GT (General Trade)</option>
+                <option value="MT">MT (Modern Trade)</option>
+                <option value="SMT">SMT</option>
+                <option value="SMT-Direct">SMT-Direct</option>
               </select>
             </div>
 
@@ -260,6 +292,54 @@ export const NewPIModal: React.FC<NewPIModalProps> = ({ isOpen, onClose, onSucce
                 placeholder="e.g. 200000"
                 className="w-full px-3 py-2 bg-emerald-50 border border-emerald-300 rounded-lg text-xs font-bold text-slate-900 focus:ring-2 focus:ring-[#F4B400]"
               />
+            </div>
+          </div>
+
+          {/* Row 3: Latitude, Longitude & Party Distance */}
+          <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-200/80 grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                <span>Party Latitude</span>
+                <span className="text-[10px] text-blue-600 font-normal">(Backend Mapped)</span>
+              </label>
+              <input
+                type="text"
+                value={latitude}
+                onChange={(e) => setLatitude(e.target.value)}
+                placeholder="e.g. 19.0760° N"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono font-medium text-slate-900 focus:ring-2 focus:ring-[#F4B400]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                <span>Party Longitude</span>
+                <span className="text-[10px] text-blue-600 font-normal">(Backend Mapped)</span>
+              </label>
+              <input
+                type="text"
+                value={longitude}
+                onChange={(e) => setLongitude(e.target.value)}
+                placeholder="e.g. 72.8777° E"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono font-medium text-slate-900 focus:ring-2 focus:ring-[#F4B400]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                <span>Calculated Distance (km)</span>
+                <span className="text-[10px] text-blue-600 font-normal">(Auto mapped)</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  value={distanceKm}
+                  onChange={(e) => setDistanceKm(Number(e.target.value))}
+                  placeholder="e.g. 145"
+                  className="w-full px-3 py-2 bg-white border border-blue-300 rounded-lg text-xs font-bold text-blue-900 focus:ring-2 focus:ring-[#F4B400]"
+                />
+                <span className="absolute right-3 top-2 text-xs font-semibold text-blue-700">KM</span>
+              </div>
             </div>
           </div>
 

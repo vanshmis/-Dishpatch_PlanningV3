@@ -30,6 +30,27 @@ export const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
   const [freightCost, setFreightCost] = useState<number>(18500);
   const [remarks, setRemarks] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string>('');
+  const [latitude, setLatitude] = useState<string>('19.0760° N');
+  const [longitude, setLongitude] = useState<string>('72.8777° E');
+  const [distanceKm, setDistanceKm] = useState<number>(32);
+
+  // Auto-fill Geo Location and Distance when PIs are selected
+  useEffect(() => {
+    if (selectedPiIds.length > 0) {
+      const clients = dispatchService.getClients();
+      const firstPI = pendingPIs.find((p) => selectedPiIds.includes(p.id));
+      if (firstPI) {
+        const client = clients.find(
+          (c) => c.name === firstPI.clientName || c.code === firstPI.clientCode
+        );
+        if (client) {
+          setLatitude(client.latitude || '19.0760° N');
+          setLongitude(client.longitude || '72.8777° E');
+          setDistanceKm(client.distanceKm || 45);
+        }
+      }
+    }
+  }, [selectedPiIds, pendingPIs]);
 
   useEffect(() => {
     if (isOpen) {
@@ -147,40 +168,36 @@ export const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
             </div>
           )}
 
-          {/* Section 1: Vehicle Selection */}
-          <div className="space-y-3 p-4 bg-slate-50 rounded-xl border border-slate-200/80">
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-              1. Select Vehicle
-            </label>
-            <select
-              value={selectedVehicleId}
-              onChange={(e) => setSelectedVehicleId(e.target.value)}
-              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:ring-2 focus:ring-[#F4B400] focus:border-[#F4B400]"
-              required
-            >
-              {vehicles.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.vehicleNumber} ({v.type}) - Cap: {(v.capacityWeightKg / 1000).toFixed(1)}T [
-                  {v.status}]
-                </option>
-              ))}
-            </select>
+          {/* Section 1: Vehicle Selection (Compact) */}
+          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 space-y-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-700 shrink-0">
+                1. Select Vehicle
+              </label>
+              <select
+                value={selectedVehicleId}
+                onChange={(e) => setSelectedVehicleId(e.target.value)}
+                className="w-full sm:w-auto flex-1 px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:ring-2 focus:ring-[#F4B400] focus:border-[#F4B400]"
+                required
+              >
+                {vehicles.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.vehicleNumber} ({v.type}) - Cap: {(v.capacityWeightKg / 1000).toFixed(1)}T [{v.status}]
+                  </option>
+                ))}
+              </select>
+            </div>
 
             {currentVehicle && (
-              <div className="text-xs bg-white p-2.5 rounded-lg border border-slate-200 grid grid-cols-3 gap-2">
-                <div className="flex justify-between text-slate-600">
-                  <span>Transporter:</span>
-                  <span className="font-semibold text-slate-800">{currentVehicle.transporterName}</span>
+              <div className="text-[11px] bg-white px-3 py-1.5 rounded-lg border border-slate-200 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-slate-600">
+                <div>
+                  Transporter: <span className="font-semibold text-slate-800">{currentVehicle.transporterName}</span>
                 </div>
-                <div className="flex justify-between text-slate-600">
-                  <span>Type / Ownership:</span>
-                  <span className="font-semibold text-slate-800">
-                    {currentVehicle.type} ({currentVehicle.ownerType})
-                  </span>
+                <div>
+                  Type / Ownership: <span className="font-semibold text-slate-800">{currentVehicle.type} ({currentVehicle.ownerType})</span>
                 </div>
-                <div className="flex justify-between text-slate-600">
-                  <span>Fitness Expiry:</span>
-                  <span className="text-emerald-700 font-mono">{currentVehicle.fitnessExpiryDate}</span>
+                <div>
+                  Fitness Expiry: <span className="text-emerald-700 font-mono font-medium">{currentVehicle.fitnessExpiryDate}</span>
                 </div>
               </div>
             )}
@@ -242,6 +259,54 @@ export const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
               placeholder="e.g. Thane Central Hub -> Bhiwandi Reliance Park -> Pune Chakan"
               className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:ring-2 focus:ring-[#F4B400]"
             />
+          </div>
+
+          {/* Party Geo Coordinates & Calculated Distance */}
+          <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-200/80 grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                <span>Destination Latitude</span>
+                <span className="text-[10px] text-blue-600 font-normal">(Backend Mapped)</span>
+              </label>
+              <input
+                type="text"
+                value={latitude}
+                onChange={(e) => setLatitude(e.target.value)}
+                placeholder="e.g. 19.0760° N"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono font-medium text-slate-900 focus:ring-2 focus:ring-[#F4B400]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                <span>Destination Longitude</span>
+                <span className="text-[10px] text-blue-600 font-normal">(Backend Mapped)</span>
+              </label>
+              <input
+                type="text"
+                value={longitude}
+                onChange={(e) => setLongitude(e.target.value)}
+                placeholder="e.g. 72.8777° E"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono font-medium text-slate-900 focus:ring-2 focus:ring-[#F4B400]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                <span>Calculated Distance (km)</span>
+                <span className="text-[10px] text-blue-600 font-normal">(Auto mapped)</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  value={distanceKm}
+                  onChange={(e) => setDistanceKm(Number(e.target.value))}
+                  placeholder="e.g. 145"
+                  className="w-full px-3 py-2 bg-white border border-blue-300 rounded-lg text-xs font-bold text-blue-900 focus:ring-2 focus:ring-[#F4B400]"
+                />
+                <span className="absolute right-3 top-2 text-xs font-semibold text-blue-700">KM</span>
+              </div>
+            </div>
           </div>
 
           {/* Section 3: Select Pending PIs */}

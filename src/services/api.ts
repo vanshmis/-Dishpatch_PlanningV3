@@ -8,6 +8,7 @@ import {
   NotificationItem,
   DispatchStatus,
   PIStatus,
+  Warehouse,
 } from '../types';
 import {
   INITIAL_CLIENTS,
@@ -17,6 +18,7 @@ import {
   INITIAL_DISPATCH_PLANS,
   INITIAL_ROLLBACK_LOGS,
   INITIAL_NOTIFICATIONS,
+  INITIAL_WAREHOUSES,
 } from '../data/mockData';
 
 // Local storage keys to persist state across user interactions
@@ -28,6 +30,7 @@ const STORAGE_KEYS = {
   CLIENTS: 'Dispatch_Planning_clients',
   ROLLBACKS: 'Dispatch_Planning_rollbacks',
   NOTIFICATIONS: 'Dispatch_Planning_notifications',
+  WAREHOUSES: 'Dispatch_Planning_warehouses',
 };
 
 function getStored<T>(key: string, defaultVal: T): T {
@@ -56,6 +59,7 @@ class DispatchDataService {
   private clients: Client[] = getStored(STORAGE_KEYS.CLIENTS, INITIAL_CLIENTS);
   private rollbacks: RollbackAction[] = getStored(STORAGE_KEYS.ROLLBACKS, INITIAL_ROLLBACK_LOGS);
   private notifications: NotificationItem[] = getStored(STORAGE_KEYS.NOTIFICATIONS, INITIAL_NOTIFICATIONS);
+  private warehouses: Warehouse[] = getStored(STORAGE_KEYS.WAREHOUSES, INITIAL_WAREHOUSES);
 
   private listeners: Array<() => void> = [];
 
@@ -424,6 +428,34 @@ class DispatchDataService {
   }
 
   // ==========================================
+  // WAREHOUSES MANAGEMENT
+  // ==========================================
+
+  public getWarehouses(): Warehouse[] {
+    return [...this.warehouses];
+  }
+
+  public addWarehouse(wh: Omit<Warehouse, 'id'>): Warehouse {
+    const newId = `WH-00${this.warehouses.length + 1}`;
+    const newWh: Warehouse = { ...wh, id: newId };
+    this.warehouses = [...this.warehouses, newWh];
+    setStored(STORAGE_KEYS.WAREHOUSES, this.warehouses);
+    this.notify();
+    return newWh;
+  }
+
+  public deleteWarehouse(id: string): boolean {
+    const idx = this.warehouses.findIndex((w) => w.id === id);
+    if (idx !== -1) {
+      this.warehouses = this.warehouses.filter((w) => w.id !== id);
+      setStored(STORAGE_KEYS.WAREHOUSES, this.warehouses);
+      this.notify();
+      return true;
+    }
+    return false;
+  }
+
+  // ==========================================
   // NOTIFICATIONS
   // ==========================================
 
@@ -466,6 +498,7 @@ class DispatchDataService {
     this.clients = INITIAL_CLIENTS;
     this.rollbacks = INITIAL_ROLLBACK_LOGS;
     this.notifications = INITIAL_NOTIFICATIONS;
+    this.warehouses = INITIAL_WAREHOUSES;
 
     localStorage.removeItem(STORAGE_KEYS.PIS);
     localStorage.removeItem(STORAGE_KEYS.DISPATCHES);
@@ -474,6 +507,7 @@ class DispatchDataService {
     localStorage.removeItem(STORAGE_KEYS.CLIENTS);
     localStorage.removeItem(STORAGE_KEYS.ROLLBACKS);
     localStorage.removeItem(STORAGE_KEYS.NOTIFICATIONS);
+    localStorage.removeItem(STORAGE_KEYS.WAREHOUSES);
 
     this.notify();
   }

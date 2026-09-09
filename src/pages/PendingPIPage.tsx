@@ -35,6 +35,7 @@ export const PendingPIPage: React.FC<PendingPIPageProps> = ({
   const [pis, setPis] = useState<ProformaInvoice[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>('PENDING');
   const [priorityFilter, setPriorityFilter] = useState<string>('ALL');
+  const [divisionFilter, setDivisionFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [clientFilter, setClientFilter] = useState<string>('ALL');
   const [selectedPIToApprove, setSelectedPIToApprove] = useState<ProformaInvoice | null>(null);
@@ -51,15 +52,17 @@ export const PendingPIPage: React.FC<PendingPIPageProps> = ({
   const filteredPIs = pis.filter((pi) => {
     const matchesStatus = statusFilter === 'ALL' || pi.status === statusFilter;
     const matchesPriority = priorityFilter === 'ALL' || pi.priority === priorityFilter;
+    const matchesDivision = divisionFilter === 'ALL' || (pi.division || 'GT') === divisionFilter;
     const matchesClient = clientFilter === 'ALL' || pi.clientName === clientFilter;
     const matchesSearch =
       pi.piNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
       pi.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
       pi.clientCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
       pi.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      pi.destinationCity.toLowerCase().includes(searchQuery.toLowerCase());
+      pi.destinationCity.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (pi.division || '').toLowerCase().includes(searchQuery.toLowerCase());
 
-    return matchesStatus && matchesPriority && matchesClient && matchesSearch;
+    return matchesStatus && matchesPriority && matchesDivision && matchesClient && matchesSearch;
   });
 
   const uniqueClients = Array.from(new Set(pis.map((p) => p.clientName)));
@@ -207,14 +210,14 @@ export const PendingPIPage: React.FC<PendingPIPageProps> = ({
         </div>
 
         {/* Filter Toolbar */}
-        <div className="p-4 border-b border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+        <div className="p-4 border-b border-slate-200 grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
           <div className="relative">
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search PI number, party code, client, destination..."
+              placeholder="Search PI number, party code, client, division..."
               className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#F4B400]"
             />
           </div>
@@ -230,6 +233,18 @@ export const PendingPIPage: React.FC<PendingPIPageProps> = ({
                 {cl}
               </option>
             ))}
+          </select>
+
+          <select
+            value={divisionFilter}
+            onChange={(e) => setDivisionFilter(e.target.value)}
+            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-purple-900 focus:ring-2 focus:ring-[#F4B400]"
+          >
+            <option value="ALL">All Divisions (GT, MT, SMT...)</option>
+            <option value="GT">GT (General Trade)</option>
+            <option value="MT">MT (Modern Trade)</option>
+            <option value="SMT">SMT</option>
+            <option value="SMT-Direct">SMT-Direct</option>
           </select>
 
           <select
@@ -252,6 +267,7 @@ export const PendingPIPage: React.FC<PendingPIPageProps> = ({
                 <th className="px-3.5 py-3 whitespace-nowrap min-w-[130px]">PI & Order No</th>
                 <th className="px-3 py-3 whitespace-nowrap min-w-[90px] font-bold text-slate-700">Party Code</th>
                 <th className="px-3.5 py-3 min-w-[160px]">Client & Destination</th>
+                <th className="px-3 py-3 whitespace-nowrap min-w-[100px] font-bold text-slate-800">Division</th>
                 <th className="px-3 py-3 text-center whitespace-nowrap font-bold text-slate-700">PI Link</th>
                 <th className="px-3 py-3 whitespace-nowrap min-w-[110px]">Issue / Due Date</th>
                 <th className="px-3 py-3 text-right whitespace-nowrap">Weight (kg)</th>
@@ -264,7 +280,7 @@ export const PendingPIPage: React.FC<PendingPIPageProps> = ({
             <tbody className="divide-y divide-slate-100 font-normal">
               {filteredPIs.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-12 text-center text-slate-400">
+                  <td colSpan={11} className="px-4 py-12 text-center text-slate-400">
                     No proforma invoices found for the selected criteria.
                   </td>
                 </tr>
@@ -296,6 +312,13 @@ export const PendingPIPage: React.FC<PendingPIPageProps> = ({
                       <div className="text-[11px] text-slate-500">
                         {pi.destinationCity}, {pi.state}
                       </div>
+                    </td>
+
+                    {/* Division */}
+                    <td className="px-3 py-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-800 border border-purple-200">
+                        {pi.division || 'GT'}
+                      </span>
                     </td>
 
                     {/* PI Link */}

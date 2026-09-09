@@ -35,6 +35,20 @@ export interface ProformaInvoice {
   assignedDispatchId?: string;
   remarks?: string;
   createdDate: string;
+  latitude?: string;
+  longitude?: string;
+  distanceKm?: number;
+  division?: 'GT' | 'MT' | 'SMT' | 'SMT-Direct';
+}
+
+export interface Warehouse {
+  id: string;
+  name: string;
+  code: string;
+  city: string;
+  state: string;
+  capacityTons: number;
+  status: 'ACTIVE' | 'MAINTENANCE' | 'INACTIVE';
 }
 
 export interface Vehicle {
@@ -98,6 +112,9 @@ export interface DispatchPlan {
   receivedBy?: string;
   receivedDate?: string;
   isRollbackAllowed: boolean;
+  latitude?: string;
+  longitude?: string;
+  totalDistanceKm?: number;
 }
 
 export interface RollbackAction {
@@ -124,6 +141,9 @@ export interface Client {
   city: string;
   state: string;
   deliveryZone: string;
+  latitude?: string;
+  longitude?: string;
+  distanceKm?: number;
   activePISummary?: {
     pendingCount: number;
     inTransitCount: number;

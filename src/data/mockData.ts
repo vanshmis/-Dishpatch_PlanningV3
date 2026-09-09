@@ -1,4 +1,4 @@
-import { ProformaInvoice, Vehicle, Driver, DispatchPlan, RollbackAction, Client, NotificationItem } from '../types';
+import { ProformaInvoice, Vehicle, Driver, DispatchPlan, RollbackAction, Client, NotificationItem, Warehouse } from '../types';
 
 export const INITIAL_CLIENTS: Client[] = [
   {
@@ -11,6 +11,9 @@ export const INITIAL_CLIENTS: Client[] = [
     city: 'Mumbai',
     state: 'Maharashtra',
     deliveryZone: 'West Zone',
+    latitude: '19.0760° N',
+    longitude: '72.8777° E',
+    distanceKm: 32,
   },
   {
     id: 'CL-002',
@@ -22,6 +25,9 @@ export const INITIAL_CLIENTS: Client[] = [
     city: 'Pune',
     state: 'Maharashtra',
     deliveryZone: 'West Zone',
+    latitude: '18.5204° N',
+    longitude: '73.8567° E',
+    distanceKm: 148,
   },
   {
     id: 'CL-003',
@@ -33,6 +39,9 @@ export const INITIAL_CLIENTS: Client[] = [
     city: 'Bengaluru',
     state: 'Karnataka',
     deliveryZone: 'South Zone',
+    latitude: '12.9716° N',
+    longitude: '77.5946° E',
+    distanceKm: 985,
   },
   {
     id: 'CL-004',
@@ -44,6 +53,9 @@ export const INITIAL_CLIENTS: Client[] = [
     city: 'Ahmedabad',
     state: 'Gujarat',
     deliveryZone: 'West Zone',
+    latitude: '23.0225° N',
+    longitude: '72.5714° E',
+    distanceKm: 525,
   },
   {
     id: 'CL-005',
@@ -55,6 +67,9 @@ export const INITIAL_CLIENTS: Client[] = [
     city: 'Hyderabad',
     state: 'Telangana',
     deliveryZone: 'South Zone',
+    latitude: '17.3850° N',
+    longitude: '78.4867° E',
+    distanceKm: 710,
   },
   {
     id: 'CL-006',
@@ -66,6 +81,9 @@ export const INITIAL_CLIENTS: Client[] = [
     city: 'New Delhi',
     state: 'Delhi',
     deliveryZone: 'North Zone',
+    latitude: '28.6139° N',
+    longitude: '77.2090° E',
+    distanceKm: 1390,
   },
 ];
 
@@ -221,6 +239,45 @@ export const INITIAL_DRIVERS: Driver[] = [
   },
 ];
 
+export const INITIAL_WAREHOUSES: Warehouse[] = [
+  {
+    id: 'WH-001',
+    name: 'Bhiwandi Logistics Hub',
+    code: 'WH-BHW',
+    city: 'Bhiwandi',
+    state: 'Maharashtra',
+    capacityTons: 5000,
+    status: 'ACTIVE',
+  },
+  {
+    id: 'WH-002',
+    name: 'Chakan Industrial Depot',
+    code: 'WH-PNQ',
+    city: 'Pune',
+    state: 'Maharashtra',
+    capacityTons: 3500,
+    status: 'ACTIVE',
+  },
+  {
+    id: 'WH-003',
+    name: 'Changodar Distribution Hub',
+    code: 'WH-AMD',
+    city: 'Ahmedabad',
+    state: 'Gujarat',
+    capacityTons: 4000,
+    status: 'ACTIVE',
+  },
+  {
+    id: 'WH-004',
+    name: 'Nelamangala Central Yard',
+    code: 'WH-BLR',
+    city: 'Bengaluru',
+    state: 'Karnataka',
+    capacityTons: 6000,
+    status: 'ACTIVE',
+  },
+];
+
 export const INITIAL_PIS: ProformaInvoice[] = [
   {
     id: 'PI-2026-1042',
@@ -239,6 +296,7 @@ export const INITIAL_PIS: ProformaInvoice[] = [
     totalAmount: 485000,
     status: 'PENDING',
     priority: 'URGENT',
+    division: 'GT',
     createdDate: '2026-03-01 09:30',
     remarks: 'Express dispatch requested for weekend retail restock',
     items: [
@@ -263,6 +321,7 @@ export const INITIAL_PIS: ProformaInvoice[] = [
     totalAmount: 320000,
     status: 'PENDING',
     priority: 'HIGH',
+    division: 'MT',
     createdDate: '2026-03-01 10:15',
     remarks: 'Direct factory drop at Chakan mid-gate',
     items: [
@@ -287,6 +346,7 @@ export const INITIAL_PIS: ProformaInvoice[] = [
     totalAmount: 640000,
     status: 'PENDING',
     priority: 'NORMAL',
+    division: 'SMT',
     createdDate: '2026-03-01 11:00',
     remarks: 'Requires GST e-way bill prior to loading',
     items: [
@@ -311,6 +371,7 @@ export const INITIAL_PIS: ProformaInvoice[] = [
     totalAmount: 890000,
     status: 'PENDING',
     priority: 'NORMAL',
+    division: 'SMT-Direct',
     createdDate: '2026-03-01 11:45',
     remarks: 'Interstate transit - vehicle must be GPS tracked',
     items: [
@@ -335,6 +396,7 @@ export const INITIAL_PIS: ProformaInvoice[] = [
     totalAmount: 512000,
     status: 'PENDING',
     priority: 'HIGH',
+    division: 'GT',
     createdDate: '2026-03-02 08:30',
     remarks: 'Deliver before 4 PM on arrival date',
     items: [
@@ -359,6 +421,7 @@ export const INITIAL_PIS: ProformaInvoice[] = [
     totalAmount: 1140000,
     status: 'PENDING',
     priority: 'NORMAL',
+    division: 'MT',
     createdDate: '2026-03-02 09:10',
     remarks: 'Long haul shipment',
     items: [
