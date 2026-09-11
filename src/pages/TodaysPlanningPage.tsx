@@ -297,8 +297,7 @@ export const TodaysPlanningPage: React.FC<TodaysPlanningPageProps> = ({
                       <div
                         key={pi.id}
                         onClick={() => onOpenPIDetails(pi)}
-                        className="px-3 py-2 flex items-center justify-between hover:bg-slate-50 cursor-pointer text-xs"
-                      >
+                        className="px-3 py-2 flex items-center justify-between hover:bg-slate-50 cursor-pointer text-xs">
                         <div className="flex items-center gap-3">
                           <span className="font-mono font-bold text-slate-900">{pi.piNumber}</span>
                           <span className="font-semibold text-slate-800">{pi.clientName}</span>

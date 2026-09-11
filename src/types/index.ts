@@ -7,6 +7,7 @@ export interface PIItem {
   itemCode: string;
   description: string;
   quantity: number;
+  originalQuantity?: number;
   unit: string;
   weightKg: number;
   volumeCbm: number;
@@ -115,6 +116,8 @@ export interface DispatchPlan {
   latitude?: string;
   longitude?: string;
   totalDistanceKm?: number;
+  warehouseId?: string;
+  warehouseName?: string;
 }
 
 export interface RollbackAction {

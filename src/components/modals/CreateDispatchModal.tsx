@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Truck, Calendar, Clock, MapPin, CheckSquare, Square, AlertTriangle, ShieldCheck, Save } from 'lucide-react';
 import { dispatchService } from '../../services/api';
-import { Vehicle, Driver, ProformaInvoice } from '../../types';
+import { Vehicle, Driver, ProformaInvoice, Warehouse } from '../../types';
 import { CapacityBar } from '../common/CapacityBar';
 
 interface CreateDispatchModalProps {
@@ -17,6 +17,8 @@ export const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
   preSelectedPIId,
   onSuccess,
 }) => {
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>('');
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [pendingPIs, setPendingPIs] = useState<ProformaInvoice[]>([]);
 
@@ -54,11 +56,18 @@ export const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
+      const whList = dispatchService.getWarehouses();
       const vList = dispatchService.getVehicles();
       const piList = dispatchService.getPendingPIs();
 
+      setWarehouses(whList);
       setVehicles(vList);
       setPendingPIs(piList);
+
+      if (whList.length > 0) {
+        setSelectedWarehouseId(whList[0].id);
+        setRouteText(`${whList[0].city} Hub -> Destination`);
+      }
 
       const availableVehicles = vList.filter((v) => v.status === 'AVAILABLE');
       if (availableVehicles.length > 0) {
@@ -129,6 +138,8 @@ export const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
       estimatedFreightCost: freightCost,
       remarks,
       isRollbackAllowed: true,
+      warehouseId: selectedWarehouseId,
+      warehouseName: warehouses.find((w) => w.id === selectedWarehouseId)?.name || 'Central Warehouse',
     });
 
     onClose();
@@ -168,24 +179,51 @@ export const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
             </div>
           )}
 
-          {/* Section 1: Vehicle Selection (Compact) */}
-          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 space-y-2">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-700 shrink-0">
-                1. Select Vehicle
-              </label>
-              <select
-                value={selectedVehicleId}
-                onChange={(e) => setSelectedVehicleId(e.target.value)}
-                className="w-full sm:w-auto flex-1 px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:ring-2 focus:ring-[#F4B400] focus:border-[#F4B400]"
-                required
-              >
-                {vehicles.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.vehicleNumber} ({v.type}) - Cap: {(v.capacityWeightKg / 1000).toFixed(1)}T [{v.status}]
-                  </option>
-                ))}
-              </select>
+          {/* Section 1: Warehouse & Vehicle Selection (Compact) */}
+          <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                  1. Dispatch Origin Warehouse
+                </label>
+                <select
+                  value={selectedWarehouseId}
+                  onChange={(e) => {
+                    const whId = e.target.value;
+                    setSelectedWarehouseId(whId);
+                    const wh = warehouses.find((w) => w.id === whId);
+                    if (wh) {
+                      setRouteText(`${wh.city} Hub -> Destination`);
+                    }
+                  }}
+                  className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-[#F4B400] focus:border-[#F4B400]"
+                  required
+                >
+                  {warehouses.map((wh) => (
+                    <option key={wh.id} value={wh.id}>
+                      {wh.name} ({wh.code}) — {wh.city}, {wh.state}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                  2. Select Vehicle
+                </label>
+                <select
+                  value={selectedVehicleId}
+                  onChange={(e) => setSelectedVehicleId(e.target.value)}
+                  className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-[#F4B400] focus:border-[#F4B400]"
+                  required
+                >
+                  {vehicles.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.vehicleNumber} ({v.type}) - Cap: {(v.capacityWeightKg / 1000).toFixed(1)}T [{v.status}]
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {currentVehicle && (

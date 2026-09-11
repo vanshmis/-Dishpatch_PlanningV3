@@ -42,6 +42,7 @@ export const NewPIModal: React.FC<NewPIModalProps> = ({ isOpen, onClose, onSucce
       itemCode: 'PRD-X101',
       description: 'Standard Corrugated Packaging Cartons',
       quantity: 1000,
+      originalQuantity: 1000,
       unit: 'PCS',
       weightKg: 1200,
       volumeCbm: 4.5,
@@ -58,7 +59,12 @@ export const NewPIModal: React.FC<NewPIModalProps> = ({ isOpen, onClose, onSucce
         setSelectedClientCode(pi.clientCode);
         setExpectedDate(pi.expectedDeliveryDate);
         setPriority(pi.priority);
-        setItems(pi.items.length > 0 ? pi.items : items);
+        if (pi.division) setDivision(pi.division);
+        const mappedItems = (pi.items.length > 0 ? pi.items : items).map((itm) => ({
+          ...itm,
+          originalQuantity: itm.originalQuantity ?? itm.quantity,
+        }));
+        setItems(mappedItems);
         setCreditLimit(500000);  // Mock backend limit
         setTotalAmountReceived(200000);  // Mock backend received
       }
@@ -97,11 +103,25 @@ export const NewPIModal: React.FC<NewPIModalProps> = ({ isOpen, onClose, onSucce
     setItems(
       items.map((itm) => {
         if (itm.id === id) {
-          const updated = { ...itm, [field]: val };
-          if (field === 'quantity' || field === 'rate') {
-            updated.amount = (Number(updated.quantity) || 0) * (Number(updated.rate) || 0);
+          if (field === 'quantity') {
+            const maxAllowed = itm.originalQuantity ?? itm.quantity;
+            let newQty = Number(val);
+            if (isNaN(newQty)) newQty = 0;
+
+            // QTY CAN ONLY DECREASE, NOT INCREASE ABOVE ORIGINAL QTY
+            if (newQty > maxAllowed) {
+              newQty = maxAllowed;
+            }
+            if (newQty < 0) newQty = 0;
+
+            const updated = {
+              ...itm,
+              quantity: newQty,
+              amount: newQty * (Number(itm.rate) || 0),
+            };
+            return updated;
           }
-          return updated;
+          return { ...itm, [field]: val };
         }
         return itm;
       })
@@ -295,170 +315,79 @@ export const NewPIModal: React.FC<NewPIModalProps> = ({ isOpen, onClose, onSucce
             </div>
           </div>
 
-          {/* Row 3: Latitude, Longitude & Party Distance */}
-          <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-200/80 grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
-                <span>Party Latitude</span>
-                <span className="text-[10px] text-blue-600 font-normal">(Backend Mapped)</span>
-              </label>
-              <input
-                type="text"
-                value={latitude}
-                onChange={(e) => setLatitude(e.target.value)}
-                placeholder="e.g. 19.0760° N"
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono font-medium text-slate-900 focus:ring-2 focus:ring-[#F4B400]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
-                <span>Party Longitude</span>
-                <span className="text-[10px] text-blue-600 font-normal">(Backend Mapped)</span>
-              </label>
-              <input
-                type="text"
-                value={longitude}
-                onChange={(e) => setLongitude(e.target.value)}
-                placeholder="e.g. 72.8777° E"
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono font-medium text-slate-900 focus:ring-2 focus:ring-[#F4B400]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
-                <span>Calculated Distance (km)</span>
-                <span className="text-[10px] text-blue-600 font-normal">(Auto mapped)</span>
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  value={distanceKm}
-                  onChange={(e) => setDistanceKm(Number(e.target.value))}
-                  placeholder="e.g. 145"
-                  className="w-full px-3 py-2 bg-white border border-blue-300 rounded-lg text-xs font-bold text-blue-900 focus:ring-2 focus:ring-[#F4B400]"
-                />
-                <span className="absolute right-3 top-2 text-xs font-semibold text-blue-700">KM</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Line Items Table with UOM */}
+          {/* Line Items Table */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-                Line Items ({items.length})
-              </label>
-              <button
-                type="button"
-                onClick={handleAddItem}
-                className="px-2.5 py-1 text-xs font-semibold text-[#181309] bg-[#F4B400] hover:bg-[#e0a400] rounded-md flex items-center gap-1"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Add Item</span>
-              </button>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                  Line Items ({items.length})
+                </label>
+                <p className="text-[10px] text-amber-700 font-medium">
+                  Note: Item details & UOM are backend-mapped. Only QTY can be modified (Decrease Only).
+                </p>
+              </div>
             </div>
 
-            <div className="border border-slate-200 rounded-xl overflow-hidden">
+            <div className="border border-slate-200 rounded-xl overflow-hidden shadow-xs">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200">
+                <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
                   <tr>
-                    <th className="px-3 py-2">Item Code</th>
-                    <th className="px-3 py-2">Description</th>
-                    <th className="px-3 py-2 w-24">UOM</th>
-                    <th className="px-3 py-2 w-20">Qty</th>
-                    <th className="px-3 py-2 w-20">Weight (kg)</th>
-                    <th className="px-3 py-2 w-20">Rate (₹)</th>
-                    <th className="px-3 py-2 text-right">Amount (₹)</th>
-                    <th className="px-3 py-2 w-8"></th>
+                    <th className="px-3 py-2.5">Item Code</th>
+                    <th className="px-3 py-2.5">Description</th>
+                    <th className="px-3 py-2.5 text-center w-20">UOM</th>
+                    <th className="px-3 py-2.5 w-32">Qty (Decrease Only)</th>
+                    <th className="px-3 py-2.5 text-right w-24">Weight (kg)</th>
+                    <th className="px-3 py-2.5 text-right w-24">Rate (₹)</th>
+                    <th className="px-3 py-2.5 text-right w-28">Amount (₹)</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {items.map((itm) => (
-                    <tr key={itm.id} className="hover:bg-slate-50">
-                      <td className="p-2">
-                        <input
-                          type="text"
-                          value={itm.itemCode}
-                          onChange={(e) => handleItemChange(itm.id, 'itemCode', e.target.value)}
-                          className="w-full px-2 py-1 bg-white border border-slate-200 rounded text-xs"
-                          required
-                        />
-                      </td>
-                      <td className="p-2">
-                        <input
-                          type="text"
-                          value={itm.description}
-                          onChange={(e) =>
-                            handleItemChange(itm.id, 'description', e.target.value)
-                          }
-                          className="w-full px-2 py-1 bg-white border border-slate-200 rounded text-xs"
-                          required
-                        />
-                      </td>
-                      <td className="p-2">
-                        <select
-                          value={itm.unit || 'PCS'}
-                          onChange={(e) => handleItemChange(itm.id, 'unit', e.target.value)}
-                          className="w-full px-2 py-1 bg-white border border-slate-200 rounded text-xs"
-                        >
-                          <option value="PCS">PCS</option>
-                          <option value="BOX">BOX</option>
-                          <option value="KG">KG</option>
-                          <option value="MT">MT</option>
-                          <option value="PALLET">PALLET</option>
-                          <option value="SET">SET</option>
-                        </select>
-                      </td>
-                      <td className="p-2">
-                        <input
-                          type="number"
-                          value={itm.quantity}
-                          onChange={(e) =>
-                            handleItemChange(itm.id, 'quantity', Number(e.target.value))
-                          }
-                          className="w-full px-2 py-1 bg-white border border-slate-200 rounded text-xs"
-                          required
-                        />
-                      </td>
-                      <td className="p-2">
-                        <input
-                          type="number"
-                          value={itm.weightKg}
-                          onChange={(e) =>
-                            handleItemChange(itm.id, 'weightKg', Number(e.target.value))
-                          }
-                          className="w-full px-2 py-1 bg-white border border-slate-200 rounded text-xs"
-                          required
-                        />
-                      </td>
-                      <td className="p-2">
-                        <input
-                          type="number"
-                          value={itm.rate}
-                          onChange={(e) =>
-                            handleItemChange(itm.id, 'rate', Number(e.target.value))
-                          }
-                          className="w-full px-2 py-1 bg-white border border-slate-200 rounded text-xs"
-                          required
-                        />
-                      </td>
-                      <td className="px-3 py-2 text-right font-semibold text-slate-800">
-                        ₹{(itm.quantity * itm.rate).toLocaleString()}
-                      </td>
-                      <td className="p-2 text-center">
-                        {items.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveItem(itm.id)}
-                            className="text-slate-400 hover:text-rose-600 p-1"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  {items.map((itm) => {
+                    const maxQty = itm.originalQuantity ?? itm.quantity;
+                    return (
+                      <tr key={itm.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="px-3 py-2.5 font-mono text-xs font-semibold text-slate-800 bg-slate-50/50">
+                          {itm.itemCode}
+                        </td>
+                        <td className="px-3 py-2.5 text-xs font-medium text-slate-800 bg-slate-50/50">
+                          {itm.description}
+                        </td>
+                        <td className="px-3 py-2.5 text-center bg-slate-50/50">
+                          <span className="px-2 py-0.5 bg-slate-200 text-slate-800 rounded text-[11px] font-bold font-mono inline-block">
+                            {itm.unit || 'PCS'}
+                          </span>
+                        </td>
+                        <td className="p-2">
+                          <div className="flex flex-col">
+                            <input
+                              type="number"
+                              min={0}
+                              max={maxQty}
+                              value={itm.quantity}
+                              onChange={(e) =>
+                                handleItemChange(itm.id, 'quantity', Number(e.target.value))
+                              }
+                              className="w-full px-2 py-1 bg-white border border-amber-400 focus:border-amber-500 rounded text-xs font-bold text-slate-900 focus:ring-2 focus:ring-[#F4B400]"
+                              title={`Max Allowed: ${maxQty} (Can only decrease)`}
+                              required
+                            />
+                            <span className="text-[9.5px] text-slate-500 font-medium mt-0.5">
+                              Max: {maxQty} {itm.unit || 'PCS'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2.5 text-right text-xs font-semibold text-slate-700 bg-slate-50/50">
+                          {itm.weightKg.toLocaleString()}
+                        </td>
+                        <td className="px-3 py-2.5 text-right text-xs font-semibold text-slate-700 bg-slate-50/50">
+                          ₹{itm.rate.toLocaleString()}
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-bold text-emerald-700 bg-slate-50/50">
+                          ₹{(itm.quantity * itm.rate).toLocaleString()}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
